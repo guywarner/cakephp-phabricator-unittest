@@ -14,7 +14,8 @@
 final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
 
     private $configFile;
-    private $phpunitBinary = 'cake';
+    private $cakeConsole = './app/Console/cake';
+    private $cakeTestSuit = "DbTest.db_test app"
     private $affectedTests;
     private $projectRoot;
 
@@ -55,51 +56,46 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
 
         $futures = array();
         $tmpfiles = array();
+
+        execx("./app/Console/cake DbTest.db_test -i");
         foreach ($this->affectedTests as $class_path => $test_path) {
             if(!Filesystem::pathExists($test_path)) {
                 continue;
             }
-
             $base = array('Controller', 'Model', 'View');
             $pieces = array_reverse(explode("/", $test_path));
             $pieces[0] = substr($pieces[0], 0, -8);
-
             $cakePath = $pieces[1]."/".$pieces[0];
             if (!in_array($pieces[1], $base)) {
                 $cakePath = $pieces[2]."/".$cakePath;
             }
-
-
             $json_tmp = new TempFile();
             $clover_tmp = null;
             $clover = null;
-
-
             if ($this->getEnableCoverage() !== false) {
                 $clover_tmp = new TempFile();
                 $clover = csprintf('--coverage-clover %s', $clover_tmp);
             }
-
-            $config = "test app $cakePath";
-
-            $futures[$test_path] =      execx("./app/Console/cake $config --log-json $json_tmp $clover");
-
+            $config = $this->cakeTestSuit." $cakePath";
+            $futures[$test_path] = new ExecFuture('%C %C --log-json %s %C',
+                $this->cakeConsoleCommand, $config, $json_tmp, $clover
+            );
             $tmpfiles[$test_path] = array(
                 'json' => $json_tmp,
                 'clover' => $clover_tmp,
             );
-
-
         }
 
         $results = array();
-        foreach ($futures as $test => $future) {
+        foreach (Futures($futures)->limit(4) as $test => $future) {
+            list($err, $stdout, $stderr) = $future->resolve();
             $results[] = $this->parseTestResults(
                 $test,
                 $tmpfiles[$test]['json'],
-                $tmpfiles[$test]['clover']);
+                $tmpfiles[$test]['clover'],
+                $stderr
+            );
         }
-
         return array_mergev($results);
     }
 
