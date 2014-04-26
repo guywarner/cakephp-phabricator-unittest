@@ -14,8 +14,8 @@
 final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
 
     private $configFile;
-    private $cakeConsole = './app/Console/cake';
-    private $cakeTestSuit = "DbTest.db_test app"
+    private $cakeConsole = './Console/cake';
+    private $cakeTestSuit = "DbTest.db_test app";
     private $affectedTests;
     private $projectRoot;
 
@@ -57,7 +57,7 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
         $futures = array();
         $tmpfiles = array();
 
-        execx("./app/Console/cake DbTest.db_test -i");
+        execx("./Console/cake DbTest.db_test -i");
         foreach ($this->affectedTests as $class_path => $test_path) {
             if(!Filesystem::pathExists($test_path)) {
                 continue;
@@ -78,7 +78,7 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
             }
             $config = $this->cakeTestSuit." $cakePath";
             $futures[$test_path] = new ExecFuture('%C %C --log-json %s %C',
-                $this->cakeConsoleCommand, $config, $json_tmp, $clover
+                $this->cakeConsole, $config, $json_tmp, $clover
             );
             $tmpfiles[$test_path] = array(
                 'json' => $json_tmp,
