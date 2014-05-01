@@ -14,8 +14,7 @@
 final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
 
     private $configFile;
-    private $cakeConsole = './Console/cake';
-    private $cakeTestSuit = "DbTest.db_test app";
+    private $phpunitBinary = './Console/cake';
     private $affectedTests;
     private $projectRoot;
 
@@ -56,7 +55,7 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
 
         $futures = array();
         $tmpfiles = array();
-
+        $alreadyTested = array();
         execx("./Console/cake DbTest.db_test -i");
         foreach ($this->affectedTests as $class_path => $test_path) {
             if(!Filesystem::pathExists($test_path)) {
@@ -69,33 +68,41 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
             if (!in_array($pieces[1], $base)) {
                 $cakePath = $pieces[2]."/".$cakePath;
             }
-            $json_tmp = new TempFile();
-            $clover_tmp = null;
-            $clover = null;
-            if ($this->getEnableCoverage() !== false) {
-                $clover_tmp = new TempFile();
-                $clover = csprintf('--coverage-clover %s', $clover_tmp);
+            $tmpCake = str_replace("/", "", $cakePath);
+
+            if (!array_key_exists($tmpCake, $alreadyTested)) {
+                $alreadyTested[$tmpCake] = 1;
+                echo "   Running $cakePath" . "Test.php\n";
+                $json_tmp = new TempFile();
+                $clover_tmp = null;
+                $clover = null;
+                if ($this->getEnableCoverage() !== false) {
+                    $clover_tmp = new TempFile();
+                    $clover = csprintf('--coverage-clover %s', $clover_tmp);
+                }
+
+                $config = "DbTest.db_test app $cakePath";
+
+                //$futures[$test_path] = new ExecFuture('%C %C --log-json %s %C', $this->phpunitBinary, $config, $json_tmp, $clover);
+                $futures[$test_path] = execx($this->phpunitBinary . " " . $config . " --log-json " . $json_tmp . " $clover");
+
+                $tmpfiles[$test_path] = array(
+                    'json' => $json_tmp,
+                    'clover' => $clover_tmp,
+                );
             }
-            $config = $this->cakeTestSuit." $cakePath";
-            $futures[$test_path] = new ExecFuture('%C %C --log-json %s %C',
-                $this->cakeConsole, $config, $json_tmp, $clover
-            );
-            $tmpfiles[$test_path] = array(
-                'json' => $json_tmp,
-                'clover' => $clover_tmp,
-            );
+        }
+        echo "\n";
+        $results = array();
+        foreach ($futures as $test => $future) {
+          //list($err, $stdout, $stderr) = $future;
+          $results[] = $this->parseTestResults(
+            $test,
+            $tmpfiles[$test]['json'],
+            $tmpfiles[$test]['clover']
+          );
         }
 
-        $results = array();
-        foreach (Futures($futures)->limit(4) as $test => $future) {
-            list($err, $stdout, $stderr) = $future->resolve();
-            $results[] = $this->parseTestResults(
-                $test,
-                $tmpfiles[$test]['json'],
-                $tmpfiles[$test]['clover'],
-                $stderr
-            );
-        }
         return array_mergev($results);
     }
 
