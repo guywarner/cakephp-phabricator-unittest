@@ -11,7 +11,7 @@
  *
  * @group unitrun
  */
-final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
+final class CakePhpTestEngine extends ArcanistUnitTestEngine {
 
     private $configFile;
     private $phpunitBinary = './Console/cake';
@@ -61,7 +61,7 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
             if(!Filesystem::pathExists($test_path)) {
                 continue;
             }
-            $base = array('Controller', 'Model', 'View');
+            $base = array('Controller', 'Model', 'View', 'Event');
             $pieces = array_reverse(explode("/", $test_path));
             $pieces[0] = substr($pieces[0], 0, -8);
             $cakePath = $pieces[1]."/".$pieces[0];
@@ -217,7 +217,8 @@ final class CakePhpTestEngine extends ArcanistBaseUnitTestEngine {
             'Test/Case/Controller',
             'Test/Case/Model',
             'Test/Case/View/Helper',
-            'Test/Case/View'
+            'Test/Case/View',
+            'Test/Case/Event'
         );
 
         $try_directories = array();
