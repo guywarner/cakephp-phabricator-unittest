@@ -117,7 +117,7 @@ final class CakePhpTestEngine extends ArcanistUnitTestEngine {
      */
     private function parseTestResults($path, $json_tmp, $clover_tmp) {
         $test_results = Filesystem::readFile($json_tmp);
-        return id(new PhpunitResultParser())
+        return id(new ArcanistPhpunitTestResultParser())
             ->setEnableCoverage($this->getEnableCoverage())
             ->setProjectRoot($this->projectRoot)
             ->setCoverageFile($clover_tmp)
